@@ -3,8 +3,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-# Database file location
-SQLALCHEMY_DATABASE_URL = "sqlite:///./phoneguard.db"
+# Database file location inside persistent data folder
+SQLALCHEMY_DATABASE_URL = "sqlite:///./data/phoneguard.db"
 
 # Create engine (connect_args={"check_same_thread": False} is required for SQLite in multithreaded environments)
 engine = create_engine(

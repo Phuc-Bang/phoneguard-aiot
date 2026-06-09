@@ -4,6 +4,7 @@
 # SQLite Database File
 backend/phoneguard.db
 phoneguard.db
+backend/data/
 
 # Virtual Environments
 .venv/

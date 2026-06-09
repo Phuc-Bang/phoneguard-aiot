@@ -11,7 +11,7 @@ services:
     volumes:
       - ./backend/app:/app/app
       - ./backend/models:/app/models
-      - ./backend/phoneguard.db:/app/phoneguard.db
+      - ./backend/data:/app/data
       - ./frontend:/frontend
     environment:
       - PYTHONUNBUFFERED=1
