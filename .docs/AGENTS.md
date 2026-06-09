@@ -10,7 +10,7 @@ Cấu trúc thư mục của dự án **PhoneGuard AIoT** được tổ chức n
 
 ```text
 phoneguard-aiot/
-├── .docs/                             <-- Thư mục chứa chỉ dẫn lõi của Agent (gitignored)
+├── .docs/                             <-- Thư mục chứa chỉ dẫn lõi của Agent (được đẩy lên Git)
 │   ├── AGENTS.md                      <-- 🧠 Bộ não dự án (Quy định vai trò, Techstack, Bản đồ tài liệu)
 │   └── WORKFLOW.md                    <-- 🔄 Quy trình chuẩn sửa lỗi & phát triển tính năng
 │
