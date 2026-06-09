@@ -14,11 +14,9 @@ phoneguard-aiot/
 │   ├── AGENTS.md                      <-- 🧠 Bộ não dự án (Quy định vai trò, Techstack, Bản đồ tài liệu)
 │   └── WORKFLOW.md                    <-- 🔄 Quy trình chuẩn sửa lỗi & phát triển tính năng
 │
-├── .codex/
-│   └── skills/                        <-- Thư viện kỹ năng tái sử dụng của Codex
-│       ├── README.md                  <-- 🧭 Bản đồ kỹ năng & hướng dẫn lựa chọn
-│       └── phoneguard-rules/
-│           └── SKILL.md               <-- 📏 Quy định viết code, comment tiếng Việt, log debug, và đẩy Git
+├── skills/                            <-- 🧭 Kỹ năng dự án (Quy định viết code, tiếng Việt, log debug, và đẩy Git)
+│   └── phoneguard-rules/
+│       └── SKILL.md                   <-- 📏 Nội dung kỹ năng (cả Agent cục bộ và CLI đều quét ở đây)
 │
 ├── .codegraph/                        <-- Cơ sở dữ liệu phân tích đồ thị mã nguồn (CodeGraph Index)
 │
@@ -71,4 +69,4 @@ Khi thực hiện bất kỳ nhiệm vụ nào trong repository này, Agent **ph
 
 ## 📊 3. Danh Sách Kỹ Năng Cần Load (Codex Skills compliance)
 Trước khi bắt đầu nhiệm vụ, hãy đọc và áp dụng kỹ năng tại:
-👉 `.codex/skills/phoneguard-rules/SKILL.md` (chứa các hướng dẫn kỹ thuật chi tiết về coding, debugging và git).
+👉 `skills/phoneguard-rules/SKILL.md` (chứa các hướng dẫn kỹ thuật chi tiết về coding, debugging và git).

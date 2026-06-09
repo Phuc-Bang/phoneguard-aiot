@@ -47,7 +47,6 @@ Ngay khi hoàn thành một tệp code hoặc kết thúc một tác vụ, Agent
 2. **Add & Commit**:
    ```bash
    git add .
-   git commit -m "feat/fix: <mô tả chi tiết bằng Tiếng Việt có dấu>"
    ```
 3. **Push lên Repo**:
    ```bash
