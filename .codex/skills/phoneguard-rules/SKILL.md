@@ -54,3 +54,8 @@ Ngay khi hoàn thành một tệp code hoặc kết thúc một tác vụ, Agent
    git push origin main
    ```
    *(Địa chỉ Repo: `https://github.com/Phuc-Bang/phoneguard-aiot.git`)*
+
+---
+
+## 📁 5. Loại Trừ Thư Mục CodeGraph (Exclusions)
+* **Tuyệt đối không đụng vào `.codegraph/`**: Không được đọc, sửa đổi, xóa hoặc commit các tệp tin trong thư mục `.codegraph/`. Đây là cơ sở dữ liệu phân tích mã nguồn cục bộ sinh ra bởi CodeGraph daemon và cần được loại trừ hoàn toàn khỏi mọi hoạt động của AI Agent.

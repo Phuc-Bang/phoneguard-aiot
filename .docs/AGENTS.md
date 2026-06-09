@@ -20,6 +20,8 @@ phoneguard-aiot/
 │       └── phoneguard-rules/
 │           └── SKILL.md               <-- 📏 Quy định viết code, comment tiếng Việt, log debug, và đẩy Git
 │
+├── .codegraph/                        <-- Cơ sở dữ liệu phân tích đồ thị mã nguồn (CodeGraph Index)
+│
 ├── backend/                           <-- 🐍 FastAPI Backend & AI logic
 │   ├── app/
 │   │   ├── ai/                        <-- Các module AI (Phát hiện dị thường, dự báo pin)
@@ -45,10 +47,13 @@ phoneguard-aiot/
 │   ├── phone_simulator.py             <-- Script giả lập gửi dữ liệu điện thoại
 │   └── train_models.py                <-- Huấn luyện mô hình Isolation Forest ban đầu
 │
+├── skills/                            <-- 🧭 Kỹ năng xuất bản chia sẻ từ xa (Bento rules)
+│   └── phoneguard-rules/
+│       └── SKILL.md
+│
 ├── docker-compose.yml                 <-- File điều phối container (port 8005)
-├── README.md                          <-- Hướng dẫn chạy dự án tổng quan
-├── SKILL.md                           <-- Quy tắc AI Agent cấp dự án (Codex/Skills)
-└── .cursorrules                       <-- Quy tắc AI Agent dành riêng cho Cursor
+├── .gitignore                         <-- File cấu hình loại trừ của Git
+└── README.md                          <-- Hướng dẫn chạy dự án tổng quan
 ```
 
 ---
@@ -64,6 +69,7 @@ Khi thực hiện bất kỳ nhiệm vụ nào trong repository này, Agent **ph
    - Trong code Javascript frontend: Sử dụng `console.log("[DEBUG] ...")` để in dữ liệu nhận được từ WebSocket và trạng thái cập nhật UI.
 4. **Quy Trình Git Tự Động**: Mỗi khi viết xong một tính năng hoặc sửa lỗi, phải tự động chạy lệnh kiểm tra `git status`, tạo commit rõ ràng và `git push` trực tiếp lên nhánh `main` của repo: `https://github.com/Phuc-Bang/phoneguard-aiot.git`.
 5. **Định Dạng Giao Diện**: Luôn tuân thủ quy định Bento Grid, viền kép Double-Bezel và khóa màu neon trong [design_system_and_skills.md](file:///e:/AIoT/Home-Work/phoneguard-aiot/docs/design_system_and_skills.md).
+6. **Loại trừ cơ sở dữ liệu CodeGraph**: Tuyệt đối không bao giờ đọc, chỉnh sửa, xóa hoặc commit các tệp tin trong thư mục `.codegraph/`. Đây là cơ sở dữ liệu phân tích mã nguồn cục bộ và cần được loại trừ hoàn toàn khỏi mọi hoạt động của AI Agent.
 
 ---
 

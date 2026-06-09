@@ -1,0 +1,30 @@
+# CodeGraph Index Database
+.codegraph/
+
+# SQLite Database File
+backend/phoneguard.db
+phoneguard.db
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python Cache Files
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
+
+# Test Cache
+.pytest_cache/
+.coverage
+.cache/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# IDE Caches
+.idea/
+.vscode/
