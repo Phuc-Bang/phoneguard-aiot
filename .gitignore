@@ -28,3 +28,7 @@ Thumbs.db
 # IDE Caches
 .idea/
 .vscode/
+
+# Local Agent Guidelines & Skills
+.docs/
+skills/
