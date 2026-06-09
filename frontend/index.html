@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PhoneGuard AIoT Dashboard</title>
+  
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="Hệ thống giám sát sức khỏe điện thoại Redmi Note 12 Turbo thời gian thực sử dụng FastAPI và AI.">
+  <meta name="author" content="Phuc Bang">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Custom Styling -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  
+  <!-- Glow Background Accents (Restrained, Tinted) -->
+  <div class="glow-bg-accent-1"></div>
+  <div class="glow-bg-accent-2"></div>
+  
+  <div class="app-container">
+    
+    <!-- HEADER -->
+    <header class="dashboard-header">
+      <div class="header-logo">
+        <div class="logo-icon">
+          <i class="fa-solid fa-shield-halved"></i>
+        </div>
+        <div class="logo-text">
+          <h1>PhoneGuard <span>AIoT</span></h1>
+          <p>Hệ thống giám sát & chẩn đoán sức khỏe smartphone bằng AI</p>
+        </div>
+      </div>
+      
+      <div class="header-status">
+        <div class="status-indicator" id="connection-status">
+          <span class="indicator-dot"></span>
+          <span class="indicator-text">Đang kết nối...</span>
+        </div>
+        <div class="device-selector-wrapper">
+          <select id="device-selector" class="custom-select">
+            <option value="redmi_note_12_turbo">Redmi Note 12 Turbo</option>
+          </select>
+        </div>
+      </div>
+    </header>
+    
+    <!-- MAIN CONTENT GRID (Asymmetric Bento Layout: 12-Column Grid) -->
+    <main class="dashboard-grid">
+      
+      <!-- BENTO CELL 1: OVERALL STATUS SUMMARY (span 8) -->
+      <div class="card-wrapper summary-wrapper">
+        <section class="card-inner summary-card" id="summary-section">
+          <div class="card-glow"></div>
+          <div class="summary-details">
+            <span class="eyebrow-accent">Chẩn đoán tổng quan</span>
+            <h3 class="bento-title">Sức Khỏe Thiết Bị</h3>
+            <div class="health-badge status-good" id="device-health-badge">Tốt</div>
+            <div class="stats-metric-primary" id="time-prediction">Đang tính thời gian...</div>
+            <div class="device-meta-row">
+              <span>Thiết bị: <strong id="meta-name">Đang tải...</strong></span>
+              <span>Model: <strong id="meta-model">Đang tải...</strong></span>
+            </div>
+          </div>
+          <div class="summary-visual">
+            <div class="radial-progress-container">
+              <svg class="radial-svg" viewBox="0 0 100 100">
+                <circle class="bg-circle" cx="50" cy="50" r="40"></circle>
+                <circle class="progress-circle" id="health-progress" cx="50" cy="50" r="40" style="stroke-dasharray: 251.2; stroke-dashoffset: 251.2;"></circle>
+              </svg>
+              <div class="radial-value" id="health-value">100%</div>
+              <div class="radial-label">Chỉ số sức khỏe</div>
+            </div>
+          </div>
+        </section>
+      </div>
+      
+      <!-- BENTO CELL 2: NETWORK METRIC (span 4) -->
+      <div class="card-wrapper network-wrapper">
+        <section class="card-inner metric-card network-card">
+          <div class="card-header">
+            <div class="card-title">
+              <i class="fa-solid fa-wifi icon-wifi"></i>
+              <h4>Độ Mạnh Tín Hiệu</h4>
+            </div>
+            <span class="card-status-badge" id="network-type">Wi-Fi</span>
+          </div>
+          <div class="metric-body network-body">
+            <div class="signal-visual">
+              <div class="signal-dbm" id="network-signal-strength">-- dBm</div>
+              <div class="signal-bars">
+                <div class="bar bar-1 active" id="sig-bar-1"></div>
+                <div class="bar bar-2 active" id="sig-bar-2"></div>
+                <div class="bar bar-3 active" id="sig-bar-3"></div>
+                <div class="bar bar-4" id="sig-bar-4"></div>
+              </div>
+            </div>
+            <div class="network-details">
+              <p id="network-status-message">Đang đo tín hiệu...</p>
+            </div>
+          </div>
+        </section>
+      </div>
+      
+      <!-- BENTO CELL 3: BATTERY METRIC (span 4) -->
+      <div class="card-wrapper battery-wrapper">
+        <section class="card-inner metric-card battery-card">
+          <div class="card-header">
+            <div class="card-title">
+              <i class="fa-solid fa-battery-three-quarters icon-battery"></i>
+              <h4>Dung Lượng Pin</h4>
+            </div>
+            <span class="card-status-badge" id="battery-status-text">Đang xả pin</span>
+          </div>
+          <div class="metric-body">
+            <div class="battery-visual-wrapper">
+              <div class="battery-body">
+                <div class="battery-level-fill" id="battery-level-fill" style="width: 0%"></div>
+                <div class="battery-percentage" id="battery-percentage">0%</div>
+                <i class="fa-solid fa-bolt charge-icon hidden" id="battery-charge-bolt"></i>
+              </div>
+              <div class="battery-terminal"></div>
+            </div>
+            <div class="metric-footer-stats">
+              <div class="footer-stat">
+                <span class="label">Điện áp</span>
+                <span class="value" id="battery-voltage">0 V</span>
+              </div>
+              <div class="footer-stat">
+                <span class="label">Dung lượng</span>
+                <span class="value" id="battery-capacity">5000 mAh</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+      
+      <!-- BENTO CELL 4: TEMPERATURE METRIC (span 4) -->
+      <div class="card-wrapper temp-wrapper">
+        <section class="card-inner metric-card temp-card">
+          <div class="card-header">
+            <div class="card-title">
+              <i class="fa-solid fa-temperature-high icon-temp"></i>
+              <h4>Nhiệt Độ Pin</h4>
+            </div>
+            <span class="card-status-badge" id="temp-status-text">Mát mẻ</span>
+          </div>
+          <div class="metric-body">
+            <div class="temp-gauge-wrapper">
+              <div class="temp-bar-container">
+                <div class="temp-bar-fill" id="temp-bar-fill" style="height: 0%"></div>
+              </div>
+              <div class="temp-value-wrapper">
+                <div class="temp-value" id="temp-value">0°C</div>
+                <p class="temp-sub">Ngưỡng an toàn: &lt;42°C</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+      
+      <!-- BENTO CELL 5: SMART RECOMMENDATIONS (span 4) -->
+      <div class="card-wrapper recs-wrapper">
+        <section class="card-inner list-card recommendations-card">
+          <div class="card-header">
+            <div class="card-title">
+              <i class="fa-solid fa-lightbulb icon-rec"></i>
+              <h4>Khuyến Nghị Vận Hành</h4>
+            </div>
+          </div>
+          <div class="list-body scrollable" id="recommendations-list">
+            <div class="empty-state">
+              <i class="fa-regular fa-lightbulb"></i>
+              <p>Đang phân tích thói quen và trạng thái để sinh khuyến nghị...</p>
+            </div>
+          </div>
+        </section>
+      </div>
+      
+      <!-- BENTO CELL 6: GRAPH - BATTERY AND TEMPERATURE HISTORY (span 8) -->
+      <div class="card-wrapper battery-graph-wrapper">
+        <section class="card-inner graph-card battery-graph-card">
+          <div class="card-header">
+            <div class="card-title">
+              <i class="fa-solid fa-chart-line text-cyan"></i>
+              <h4>Lịch sử Pin & Nhiệt độ</h4>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="batteryChart"></canvas>
+          </div>
+        </section>
+      </div>
+      
+      <!-- BENTO CELL 7: AI ANOMALIES & ALERTS (span 4) -->
+      <div class="card-wrapper alerts-wrapper">
+        <section class="card-inner list-card alerts-card">
+          <div class="card-header">
+            <div class="card-title">
+              <i class="fa-solid fa-circle-exclamation icon-alert"></i>
+              <h4>Cảnh Báo Dị Thường (AI)</h4>
+            </div>
+            <span class="alerts-count" id="alerts-count">0 Cảnh báo</span>
+          </div>
+          <div class="list-body scrollable" id="alerts-list">
+            <div class="empty-state">
+              <i class="fa-solid fa-square-check"></i>
+              <p>Hệ thống hoạt động bình thường. Không phát hiện dị thường.</p>
+            </div>
+          </div>
+        </section>
+      </div>
+      
+      <!-- BENTO CELL 8: GRAPH - REAL-TIME ACCELEROMETER (span 12 - FULL WIDTH) -->
+      <div class="card-wrapper accel-graph-wrapper">
+        <section class="card-inner graph-card accel-graph-card">
+          <div class="card-header">
+            <div class="card-title">
+              <i class="fa-solid fa-cube text-danger"></i>
+              <h4>Cảm Biến Gia Tốc (Real-time telemetry)</h4>
+            </div>
+            <div class="accel-values">
+              <span class="val-x">X: <strong id="acc-x">0.00</strong></span>
+              <span class="val-y">Y: <strong id="acc-y">0.00</strong></span>
+              <span class="val-z">Z: <strong id="acc-z">9.81</strong></span>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="accelChart"></canvas>
+          </div>
+        </section>
+      </div>
+      
+    </main>
+    
+    <!-- FOOTER -->
+    <footer class="dashboard-footer">
+      <p>&copy; 2026 PhoneGuard AIoT. Giao diện thiết kế theo chuẩn Taste Skill bởi Phuc Bang.</p>
+    </footer>
+    
+  </div>
+  
+  <!-- Custom Javascript -->
+  <script src="js/app.js"></script>
+</body>
+</html>

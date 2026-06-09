@@ -1,0 +1,14 @@
+# Cursor Rules for PhoneGuard AIoT
+
+## 🌐 1. Language Rules
+* Always communicate with the user in Vietnamese.
+* All comments inside code files (Python, JS, HTML, CSS) must be detailed and written in accented Vietnamese (Tiếng Việt có dấu).
+
+## 🛠️ 2. Debugging & Logs
+* Include detailed debug logs in both Backend (Python `logging` or `print`) and Frontend (JS `console.log`). Log key actions such as telemetry receipts, DB inserts, WebSocket broadcasts, and AI evaluations.
+
+## 🎨 3. UI/UX Rules
+* Follow the glassmorphic dark tech bento design documented in `docs/design_system_and_skills.md`.
+
+## 🚀 4. Git Automation
+* Once a task or code file is finished, add, commit, and push changes to the repository: `https://github.com/Phuc-Bang/phoneguard-aiot.git`.

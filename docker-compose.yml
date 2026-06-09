@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  phoneguard-server:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: phoneguard_container
+    ports:
+      - "8005:8000"
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/models:/app/models
+      - ./backend/phoneguard.db:/app/phoneguard.db
+      - ./frontend:/frontend
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: always
