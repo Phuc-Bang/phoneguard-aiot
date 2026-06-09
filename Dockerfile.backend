@@ -5,7 +5,7 @@ WORKDIR /app
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-ENV PHONEGUARD_OUTPUT_DIR=/app/outputs
+ENV OUTPUT_DIR=/app/outputs
 
 COPY backend/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt

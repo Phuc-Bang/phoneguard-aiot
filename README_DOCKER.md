@@ -1,31 +1,27 @@
 # PhoneGuard AIoT - Lab 5 Docker Guide
 
-Tài liệu này hướng dẫn chạy PhoneGuard AIoT theo mô hình **Dockerized Multi-Service AIoT Inference System** gồm 2 service:
+PhoneGuard AIoT chạy theo mô hình **Dockerized Multi-Service AIoT Inference System**:
 
-- `backend`: FastAPI inference API, nhận telemetry và ghi log.
-- `frontend`: React/Vite dashboard, build thành static site và chạy bằng Nginx.
+- `backend`: FastAPI nhận telemetry, chạy anomaly/forecast/risk và ghi log CSV.
+- `frontend`: React/Vite dashboard build static và phục vụ bằng Nginx.
 
-## 1. Chạy Docker Compose
+## Chạy Docker Compose
 
-Từ thư mục gốc dự án:
+Từ thư mục gốc `phoneguard-aiot`:
 
 ```bash
 docker compose up --build
 ```
 
-Sau khi build và chạy xong, mở:
+Sau khi chạy xong, mở:
 
 - Backend docs: http://localhost:8000/docs
 - Dashboard: http://localhost:3000
 - Health: http://localhost:8000/health
 
-Nếu `http://localhost:8000/health` trả về nội dung của dự án khác, nghĩa là port `8000` trên máy host đang bị service khác chiếm. Hãy dừng service/container đó rồi chạy lại:
+Nếu `localhost:8000` đang bị service khác chiếm, hãy dừng service đó rồi chạy lại `docker compose up --build`.
 
-```bash
-docker compose up --build
-```
-
-## 2. Kiểm tra service
+## Kiểm tra service
 
 ```bash
 docker compose ps
@@ -43,117 +39,124 @@ Xem log frontend:
 docker compose logs -f frontend
 ```
 
-Dừng và xóa container:
+Dừng hệ thống:
 
 ```bash
 docker compose down
 ```
 
-## 3. Docker image là gì?
+## Docker image là gì?
 
-Docker image là gói đóng băng môi trường chạy ứng dụng. Image backend chứa Python, thư viện FastAPI và mã nguồn trong `backend/app`. Image frontend chứa Node để build React/Vite, sau đó copy kết quả build sang Nginx để phục vụ dashboard.
+Docker image là gói đóng băng môi trường chạy ứng dụng. Image backend chứa Python, FastAPI, Uvicorn và mã nguồn `backend/app`. Image frontend dùng Node để build React/Vite, sau đó copy `dist/` sang Nginx.
 
-Image giống như bản mẫu chỉ đọc. Khi chạy image, Docker tạo ra container.
+Image là bản mẫu chỉ đọc. Khi chạy image, Docker tạo container.
 
-## 4. Container là gì?
+## Container là gì?
 
-Container là tiến trình đang chạy được tạo từ image. Trong dự án này:
+Container là tiến trình đang chạy từ image, có filesystem và môi trường riêng.
 
-- Container `phoneguard-backend` chạy `uvicorn app.main:app`.
-- Container `phoneguard-frontend` chạy Nginx để phục vụ dashboard.
+Trong dự án này:
 
-Container có filesystem riêng, network riêng và biến môi trường riêng, nhưng vẫn có thể mount thư mục từ máy host để giữ log.
+- `phoneguard-backend` chạy FastAPI ở port container `8000`.
+- `phoneguard-frontend` chạy Nginx ở port container `80`.
 
-## 5. Port mapping là gì?
+## Port mapping là gì?
 
-Port mapping nối port trong container ra port trên máy host.
+Port mapping nối port trong container ra máy host.
 
-Trong `docker-compose.yml`:
+Backend:
 
 ```yaml
 ports:
   - "8000:8000"
 ```
 
-Nghĩa là backend trong container lắng nghe port `8000`, người dùng trên máy host truy cập bằng `http://localhost:8000`.
+Nghĩa là người dùng mở `http://localhost:8000`, request được chuyển vào port `8000` trong container backend.
 
-Frontend dùng:
+Frontend:
 
 ```yaml
 ports:
   - "3000:80"
 ```
 
-Nghĩa là Nginx trong container lắng nghe port `80`, nhưng người dùng mở dashboard bằng `http://localhost:3000`.
+Nghĩa là người dùng mở `http://localhost:3000`, request được chuyển vào Nginx port `80` trong container frontend.
 
-## 6. Volume giữ telemetry/event/forecast logs như thế nào?
+## Volume giữ telemetry/event/forecast logs
 
-Backend mount volume:
+Backend mount:
 
 ```yaml
 volumes:
   - ./outputs:/app/outputs
+environment:
+  - OUTPUT_DIR=/app/outputs
 ```
 
-Điều này nghĩa là:
-
-- Trong container, backend ghi log vào `/app/outputs`.
-- Trên máy host, dữ liệu thật nằm ở `./outputs`.
+Backend ghi log trong container tại `/app/outputs`, nhưng dữ liệu thật nằm ở thư mục `./outputs` trên máy host. Khi `docker compose down`, container bị xóa nhưng các CSV vẫn còn.
 
 Các file log:
 
-- `outputs/telemetry.csv`: telemetry từ điện thoại Android.
-- `outputs/anomaly_event_log.csv`: anomaly event do backend phát hiện.
-- `outputs/forecast_log.csv`: log kết quả dự báo pin/inference.
+- `outputs/phone_telemetry.csv`
+- `outputs/anomaly_event_log.csv`
+- `outputs/forecast_log.csv`
 
-Khi chạy `docker compose down`, container bị xóa nhưng dữ liệu trong `./outputs` vẫn còn.
+## Vì sao phải chạy local trước Docker?
 
-## 7. Frontend gọi backend qua biến môi trường
+Nên chạy local trước để tách lỗi ứng dụng khỏi lỗi đóng gói:
 
-Dashboard React/Vite đọc API base URL từ:
+1. Chạy backend local và kiểm tra `http://localhost:8000/health`.
+2. Gửi thử `POST /telemetry` và chắc chắn CSV ghi đúng.
+3. Chạy frontend local bằng `npm run dev` và kiểm tra dashboard gọi được backend.
+4. Khi app local ổn, mới build Docker.
 
-```text
-VITE_API_BASE_URL=http://localhost:8000
-```
+Cách này giúp biết lỗi nằm ở code FastAPI/React hay ở Dockerfile, port mapping, volume, network hoặc biến môi trường.
 
-Trong Docker build, biến này được truyền qua `build.args`:
+## Demo bằng Redmi Note 12 Turbo cùng Wi-Fi
 
-```yaml
-args:
-  VITE_API_BASE_URL: http://localhost:8000
-```
-
-Vì Vite nhúng biến `VITE_*` vào bundle lúc build, cần rebuild frontend nếu đổi URL backend:
+1. Cho laptop và Redmi Note 12 Turbo vào cùng mạng Wi-Fi.
+2. Chạy Docker:
 
 ```bash
 docker compose up --build
 ```
 
-## 8. Vì sao phải chạy local trước Docker?
+3. Lấy IP LAN của laptop, ví dụ:
 
-Nên chạy local trước Docker để tách lỗi ứng dụng khỏi lỗi đóng gói.
+```text
+192.168.1.5
+```
 
-Thứ tự kiểm tra khuyến nghị:
+4. Mở phone-web trên Redmi bằng Live Server hoặc một static server cùng mạng. Ví dụ nếu Live Server chạy port `5500`:
 
-1. Chạy backend local và kiểm tra `http://localhost:8000/health`.
-2. Gửi thử `POST /telemetry` và chắc chắn CSV được ghi đúng.
-3. Chạy frontend local bằng Vite và kiểm tra dashboard gọi được backend.
-4. Sau khi app chạy ổn, mới build Docker.
+```text
+http://192.168.1.5:5500/phone-web/index.html
+```
 
-Cách này giúp biết lỗi nằm ở code FastAPI/React hay ở Dockerfile, port mapping, volume, network hoặc biến môi trường.
+5. Trong ô Backend URL trên phone-web, nhập:
 
-## 9. Test nhanh telemetry trong Docker
+```text
+http://192.168.1.5:8000
+```
 
-Sau khi `docker compose up --build`, gửi mẫu telemetry:
+6. Bấm **Start Sending**. Điện thoại sẽ gửi telemetry mỗi 3 giây vào backend Docker.
+
+7. Trên laptop, mở dashboard:
+
+```text
+http://localhost:3000
+```
+
+8. Theo dõi log backend:
+
+```bash
+docker compose logs -f backend
+```
+
+## Test nhanh API
 
 ```bash
 curl -X POST http://localhost:8000/telemetry ^
   -H "Content-Type: application/json" ^
-  -d "{\"device_id\":\"android-phone-001\",\"timestamp\":\"2026-06-09T09:00:00Z\",\"battery_level\":72,\"charging\":false,\"acc_x\":0.1,\"acc_y\":0.2,\"acc_z\":9.8,\"light_lux\":120,\"network_type\":\"wifi\"}"
-```
-
-Sau đó mở dashboard:
-
-```text
-http://localhost:3000
+  -d "{\"device_id\":\"redmi-note-12-turbo\",\"timestamp\":\"2026-06-09T09:00:00Z\",\"battery_level\":72,\"charging\":false,\"acc_x\":0.1,\"acc_y\":0.2,\"acc_z\":9.8,\"light_lux\":120,\"network_type\":\"online\"}"
 ```

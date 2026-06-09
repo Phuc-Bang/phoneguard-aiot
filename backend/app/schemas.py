@@ -74,25 +74,46 @@ class ForecastRequest(BaseModel):
     """Payload tùy chọn cho endpoint forecast."""
 
     device_id: str | None = None
+    telemetry: TelemetryIn | None = None
+
+
+class ForecastModelOutput(BaseModel):
+    """Phần output mô hình của battery forecasting."""
+
+    target: str = "battery_level"
+    predicted_battery_15min: float
+    predicted_battery_30min: float
+    model_version: str = "battery_linear_trend_v1"
+    confidence: float
+
+
+class ForecastDecision(BaseModel):
+    """Phần quyết định rủi ro từ forecast."""
+
+    risk_level: str
+    recommendation: str
+    reason: str
+    safety_note: str = "Forecast chỉ là tín hiệu khuyến nghị, không phải lệnh điều khiển."
 
 
 class ForecastResult(BaseModel):
-    """Kết quả dự báo pin từ lịch sử telemetry."""
+    """Kết quả dự báo pin theo contract Lab."""
 
-    device_id: str
-    current_battery_level: float | None
-    estimated_minutes_remaining: float | None
-    trend_percent_per_hour: float | None
-    message: str
+    model_output: ForecastModelOutput
+    decision: ForecastDecision
 
 
 class RiskResult(BaseModel):
     """Kết quả dự đoán rủi ro và khuyến nghị vận hành."""
 
     device_id: str
-    risk_level: str
+    overall_risk: str
     risk_score: float
+    main_reason: str
     recommendations: list[str]
+    control_allowed: bool = False
+    safety_note: str = "PhoneGuard AIoT chỉ khuyến nghị, không tự điều khiển thiết bị."
+    model_version: str = "risk_recommendation_v1"
 
 
 class ModelInfo(BaseModel):

@@ -11,7 +11,7 @@ from .schemas import ForecastResult, TelemetryIn, none_to_empty
 
 
 PROJECT_DIR = Path(__file__).resolve().parents[2]
-OUTPUT_DIR = Path(os.getenv("PHONEGUARD_OUTPUT_DIR", PROJECT_DIR / "outputs"))
+OUTPUT_DIR = Path(os.getenv("OUTPUT_DIR", os.getenv("PHONEGUARD_OUTPUT_DIR", PROJECT_DIR / "outputs")))
 TELEMETRY_FILE = OUTPUT_DIR / "phone_telemetry.csv"
 ANOMALY_FILE = OUTPUT_DIR / "anomaly_event_log.csv"
 FORECAST_FILE = OUTPUT_DIR / "forecast_log.csv"
@@ -47,10 +47,15 @@ FORECAST_FIELDS = [
     "forecast_id",
     "device_id",
     "timestamp",
-    "current_battery_level",
-    "estimated_minutes_remaining",
-    "trend_percent_per_hour",
-    "message",
+    "target",
+    "predicted_battery_15min",
+    "predicted_battery_30min",
+    "model_version",
+    "confidence",
+    "risk_level",
+    "recommendation",
+    "reason",
+    "safety_note",
 ]
 
 _lock = Lock()
@@ -163,23 +168,30 @@ def read_events(limit: int = 100, device_id: str | None = None) -> list[dict[str
     return rows[-limit:]
 
 
-def append_forecast(result: ForecastResult) -> dict[str, Any]:
+def append_forecast(device_id: str, result: ForecastResult) -> dict[str, Any]:
     """Ghi kết quả forecast vào outputs/forecast_log.csv."""
     ensure_storage()
     timestamp = datetime.now(timezone.utc).isoformat()
+    model_output = result.model_output
+    decision = result.decision
     row = {
-        "forecast_id": f"{result.device_id}-{int(datetime.now(timezone.utc).timestamp() * 1000)}",
-        "device_id": result.device_id,
+        "forecast_id": f"{device_id}-{int(datetime.now(timezone.utc).timestamp() * 1000)}",
+        "device_id": device_id,
         "timestamp": timestamp,
-        "current_battery_level": none_to_empty(result.current_battery_level),
-        "estimated_minutes_remaining": none_to_empty(result.estimated_minutes_remaining),
-        "trend_percent_per_hour": none_to_empty(result.trend_percent_per_hour),
-        "message": result.message,
+        "target": model_output.target,
+        "predicted_battery_15min": model_output.predicted_battery_15min,
+        "predicted_battery_30min": model_output.predicted_battery_30min,
+        "model_version": model_output.model_version,
+        "confidence": model_output.confidence,
+        "risk_level": decision.risk_level,
+        "recommendation": decision.recommendation,
+        "reason": decision.reason,
+        "safety_note": decision.safety_note,
     }
     with _lock:
         with FORECAST_FILE.open("a", newline="", encoding="utf-8") as file:
             csv.DictWriter(file, fieldnames=FORECAST_FIELDS).writerow(row)
-    print(f"[DEBUG] Luu forecast log device={result.device_id}")
+    print(f"[DEBUG] Luu forecast log device={device_id}")
     return row
 
 

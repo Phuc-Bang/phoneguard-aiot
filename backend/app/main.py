@@ -104,13 +104,16 @@ def detect_anomaly_endpoint(payload: TelemetryIn) -> AnomalyResult:
 def forecast(payload: ForecastRequest | None = None, device_id: str | None = Query(default=None)) -> ForecastResult:
     """Dự báo pin từ lịch sử CSV và ghi forecast_log.csv."""
     selected_device = device_id or (payload.device_id if payload else None)
-    return forecast_battery(device_id=selected_device)
+    current_telemetry = payload.telemetry if payload else None
+    return forecast_battery(telemetry=current_telemetry, device_id=selected_device)
 
 
 @app.post("/predict-risk", response_model=RiskResult)
 def predict_risk_endpoint(payload: TelemetryIn) -> RiskResult:
     """Sinh mức rủi ro và khuyến nghị từ telemetry."""
-    return predict_risk(payload)
+    anomaly = detect_anomaly(payload, persist_event=False)
+    forecast_result = forecast_battery(telemetry=payload, device_id=payload.device_id)
+    return predict_risk(payload, anomaly=anomaly, forecast=forecast_result)
 
 
 @app.get("/events")

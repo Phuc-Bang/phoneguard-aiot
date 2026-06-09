@@ -1,4 +1,4 @@
-// Cấu hình Vite cho dashboard React của PhoneGuard AIoT.
+// Cấu hình Vite cho dashboard React + TypeScript của PhoneGuard AIoT.
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 

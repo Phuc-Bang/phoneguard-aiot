@@ -1,190 +1,56 @@
-/* Dashboard React/Vite cho Lab 5, tối ưu cho đọc nhanh trạng thái inference. */
+/* Tailwind base và một số style nền dành riêng cho dashboard cyber AIoT. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #eef8fb;
-  background: #071014;
+  color-scheme: dark;
+  font-family: "Satoshi", "Outfit", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #061014;
+  color: #ecfeff;
+  font-variant-numeric: tabular-nums;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(0, 229, 255, 0.14), transparent 28%),
+    radial-gradient(circle at 92% 12%, rgba(57, 255, 20, 0.08), transparent 30%),
+    linear-gradient(180deg, #061014 0%, #08151b 100%);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.34;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.026) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: radial-gradient(circle at 50% 8%, black, transparent 72%);
 }
 
 * {
   box-sizing: border-box;
 }
 
-body {
-  margin: 0;
-}
-
-.shell {
-  width: min(1180px, calc(100% - 32px));
-  margin: 0 auto;
-  padding: 28px 0;
-}
-
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 18px;
-}
-
-h1,
-h2,
-p {
-  margin: 0;
-  letter-spacing: 0;
-}
-
-h1 {
-  font-size: clamp(28px, 4vw, 44px);
-}
-
-.topbar p,
-.muted,
-.empty {
-  color: #95b2ba;
-}
-
-.status {
-  min-width: 96px;
-  border: 1px solid #31515a;
-  border-radius: 999px;
-  padding: 8px 12px;
-  text-align: center;
-  font-weight: 700;
-  background: #102027;
-}
-
-.status.online {
-  color: #39ff14;
-}
-
-.status.offline {
-  color: #ff5f6d;
-}
-
-.grid,
-.footer-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.metric,
-.panel {
-  border: 1px solid #24444c;
-  box-shadow: inset 0 0 0 1px #10262d;
-  border-radius: 8px;
-  background: #0b171c;
-}
-
-.metric {
-  min-height: 148px;
-  padding: 16px;
-}
-
-.metric-icon {
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  border-radius: 8px;
-  color: #39ff14;
-  background: #102027;
-  margin-bottom: 14px;
-}
-
-.metric span {
-  display: block;
-  color: #95b2ba;
-  font-size: 13px;
-}
-
-.metric strong {
-  display: block;
-  margin-top: 6px;
-  font-size: 26px;
-}
-
-.metric p {
-  margin-top: 8px;
-  color: #8da5ad;
-  overflow-wrap: anywhere;
-}
-
-.content {
-  display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
-  gap: 12px;
-  margin-top: 12px;
-}
-
-.panel {
-  padding: 18px;
-  min-height: 280px;
-}
-
-.panel.small {
-  min-height: 120px;
-  margin-top: 12px;
-}
-
-.panel-title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 14px;
-}
-
-.panel-title svg {
-  color: #00e5ff;
-}
-
-pre {
-  margin: 0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  color: #cdeef4;
-}
-
-.events {
-  display: grid;
-  gap: 10px;
-  padding: 0;
-  margin: 0;
-  list-style: none;
-}
-
-.events li {
-  border: 1px solid #263f46;
-  border-radius: 8px;
-  padding: 12px;
-  background: #071014;
-}
-
-.events strong {
-  color: #ffcc4d;
-  text-transform: uppercase;
-}
-
-.events span {
-  margin-left: 8px;
-  color: #95b2ba;
-}
-
-.events p {
-  margin-top: 6px;
-  color: #d8eef2;
-}
-
-@media (max-width: 860px) {
-  .grid,
-  .footer-grid,
-  .content {
-    grid-template-columns: 1fr;
+@layer components {
+  .hud-panel {
+    @apply rounded-lg border border-pg-line bg-pg-panel/80 shadow-bezel;
+    background-image:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018)),
+      radial-gradient(circle at 8% 0%, rgba(0, 229, 255, 0.08), transparent 38%);
   }
 
-  .topbar {
-    align-items: flex-start;
-    flex-direction: column;
+  .hud-panel-muted {
+    @apply rounded-lg border border-pg-line bg-black/20;
+  }
+
+  .focus-ring {
+    @apply outline-none focus-visible:ring-2 focus-visible:ring-pg-cyan/70 focus-visible:ring-offset-2 focus-visible:ring-offset-pg-bg;
   }
 }
