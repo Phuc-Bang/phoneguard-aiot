@@ -47,10 +47,6 @@ phoneguard-aiot/
 │   ├── phone_simulator.py             <-- Script giả lập gửi dữ liệu điện thoại
 │   └── train_models.py                <-- Huấn luyện mô hình Isolation Forest ban đầu
 │
-├── skills/                            <-- 🧭 Kỹ năng xuất bản chia sẻ từ xa (Bento rules)
-│   └── phoneguard-rules/
-│       └── SKILL.md
-│
 ├── docker-compose.yml                 <-- File điều phối container (port 8005)
 ├── .gitignore                         <-- File cấu hình loại trừ của Git
 └── README.md                          <-- Hướng dẫn chạy dự án tổng quan
