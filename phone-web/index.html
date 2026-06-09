@@ -1,0 +1,259 @@
+<!doctype html>
+<!-- PhoneGuard phone-web: giao diện Android gửi telemetry về FastAPI backend. -->
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PhoneGuard Phone Web</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #071014;
+        color: #edf8fb;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at top left, rgba(57, 255, 20, 0.14), transparent 34%),
+          linear-gradient(180deg, #071014 0%, #0a161b 100%);
+      }
+
+      .app {
+        width: min(100% - 28px, 760px);
+        margin: 0 auto;
+        padding: 24px 0;
+      }
+
+      .panel {
+        border: 1px solid #24444c;
+        box-shadow: inset 0 0 0 1px #10262d, 0 24px 70px rgb(0 0 0 / 38%);
+        border-radius: 8px;
+        background: rgba(11, 23, 28, 0.96);
+        overflow: hidden;
+      }
+
+      header {
+        padding: 22px;
+        border-bottom: 1px solid #1d3941;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(28px, 8vw, 42px);
+        letter-spacing: 0;
+      }
+
+      p {
+        margin: 0;
+      }
+
+      .muted {
+        color: #9bb6bd;
+        margin-top: 8px;
+      }
+
+      .content {
+        display: grid;
+        gap: 16px;
+        padding: 18px;
+      }
+
+      label {
+        display: grid;
+        gap: 7px;
+        color: #bbd5db;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      input {
+        width: 100%;
+        height: 46px;
+        border: 1px solid #2a545e;
+        border-radius: 6px;
+        padding: 0 12px;
+        color: #edf8fb;
+        background: #081216;
+        font-size: 16px;
+      }
+
+      .actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      button {
+        height: 46px;
+        border: 0;
+        border-radius: 6px;
+        font-size: 15px;
+        font-weight: 800;
+        color: #041014;
+        background: #39ff14;
+      }
+
+      button.secondary {
+        color: #edf8fb;
+        background: #22363d;
+      }
+
+      button:disabled {
+        opacity: 0.45;
+      }
+
+      button:active {
+        transform: scale(0.99);
+      }
+
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .card {
+        min-height: 92px;
+        border: 1px solid #1f3c44;
+        border-radius: 8px;
+        padding: 13px;
+        background: #071014;
+      }
+
+      .card span {
+        display: block;
+        color: #8faab2;
+        font-size: 12px;
+      }
+
+      .card strong {
+        display: block;
+        margin-top: 8px;
+        font-size: 20px;
+        overflow-wrap: anywhere;
+      }
+
+      .status {
+        border: 1px solid #2d5058;
+        border-radius: 8px;
+        padding: 14px;
+        background: #0d1b21;
+      }
+
+      .status strong {
+        color: #39ff14;
+      }
+
+      .status.error strong {
+        color: #ff6473;
+      }
+
+      .warnings {
+        display: grid;
+        gap: 8px;
+      }
+
+      .warning {
+        border: 1px solid #624b18;
+        border-radius: 8px;
+        padding: 10px 12px;
+        color: #ffd783;
+        background: rgba(255, 198, 74, 0.08);
+      }
+
+      .warning.hidden {
+        display: none;
+      }
+
+      pre {
+        min-height: 230px;
+        max-height: 420px;
+        overflow: auto;
+        margin: 0;
+        border: 1px solid #1f3c44;
+        border-radius: 8px;
+        padding: 14px;
+        background: #050c10;
+        color: #d7f3f8;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+
+      @media (max-width: 560px) {
+        .cards,
+        .actions {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <section class="panel">
+        <header>
+          <h1>PhoneGuard AIoT</h1>
+          <p class="muted">Android telemetry sender qua HTTP POST /telemetry mỗi 3 giây.</p>
+        </header>
+
+        <div class="content">
+          <label for="backendUrl">
+            Backend URL
+            <input id="backendUrl" value="http://192.168.1.5:8000" placeholder="http://192.168.1.5:8000" />
+          </label>
+
+          <label for="deviceId">
+            Device ID
+            <input id="deviceId" value="redmi-phone-001" />
+          </label>
+
+          <div class="actions">
+            <button id="startBtn">Start Sending</button>
+            <button id="stopBtn" class="secondary" disabled>Stop</button>
+          </div>
+
+          <div id="statusBox" class="status">
+            Status: <strong id="sendStatus">Idle</strong>
+          </div>
+
+          <div class="warnings">
+            <div id="batteryWarning" class="warning hidden">Battery API không được hỗ trợ, đang dùng fallback battery_level=50 và charging=false.</div>
+            <div id="motionWarning" class="warning hidden">DeviceMotion không được hỗ trợ hoặc chưa cấp quyền, đang dùng fallback acc_x=null, acc_y=null, acc_z=null.</div>
+          </div>
+
+          <section class="cards" aria-label="Telemetry summary">
+            <div class="card">
+              <span>Battery</span>
+              <strong id="batteryText">--</strong>
+            </div>
+            <div class="card">
+              <span>Charging</span>
+              <strong id="chargingText">--</strong>
+            </div>
+            <div class="card">
+              <span>Accelerometer</span>
+              <strong id="motionText">--</strong>
+            </div>
+            <div class="card">
+              <span>Network</span>
+              <strong id="networkText">--</strong>
+            </div>
+          </section>
+
+          <section>
+            <p class="muted">Latest payload JSON</p>
+            <pre id="payloadView">{}</pre>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

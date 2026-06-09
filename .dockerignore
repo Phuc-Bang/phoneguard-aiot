@@ -1,0 +1,22 @@
+# Giảm Docker build context và tránh copy dữ liệu runtime/local cache.
+.git
+.codegraph
+.docs
+skills
+scratch
+outputs
+backend/data
+backend/models
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.pytest_cache
+.venv
+venv
+env
+node_modules
+frontend/node_modules
+frontend/dist
+npm-debug.log
+README_DOCKER.md

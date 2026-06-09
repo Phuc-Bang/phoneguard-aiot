@@ -1,84 +1,118 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List
-from datetime import datetime
+"""Schema Pydantic cho backend PhoneGuard AIoT."""
 
-# Device Schemas
-class DeviceBase(BaseModel):
-    device_id: str
-    name: Optional[str] = "Smartphone"
-    model: Optional[str] = "Unknown"
-    battery_capacity: Optional[int] = 5000
+from datetime import datetime, timezone
+from typing import Any
 
-class DeviceCreate(DeviceBase):
-    pass
+from pydantic import BaseModel, Field, field_validator
 
-class DeviceResponse(DeviceBase):
-    id: int
-    created_at: datetime
 
-    class Config:
-        from_attributes = True
+class TelemetryIn(BaseModel):
+    """Telemetry do điện thoại Android gửi lên API."""
 
-# Telemetry Schemas
-class TelemetryCreate(BaseModel):
-    device_id: str
-    timestamp: datetime
+    device_id: str = Field(..., min_length=1)
+    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     battery_level: float = Field(..., ge=0, le=100)
-    battery_temperature: float = Field(..., description="In Celsius")
-    battery_status: str = Field(..., description="charging, discharging, full, etc.")
-    battery_voltage: Optional[float] = None  # in Volts
-    network_type: Optional[str] = "Unknown"
-    network_strength: Optional[float] = None
-    accel_x: Optional[float] = 0.0
-    accel_y: Optional[float] = 0.0
-    accel_z: Optional[float] = 9.81
+    charging: bool
+    acc_x: float | None = None
+    acc_y: float | None = None
+    acc_z: float | None = None
+    light_lux: float | None = None
+    network_type: str | None = None
 
-class TelemetryResponse(TelemetryCreate):
-    id: int
-    created_at: datetime
+    @field_validator("timestamp", mode="before")
+    @classmethod
+    def validate_timestamp(cls, value: str | None) -> str:
+        """Chuẩn hóa timestamp về ISO string để lưu CSV nhất quán."""
+        if not value:
+            return datetime.now(timezone.utc).isoformat()
+        datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return value
 
-    class Config:
-        from_attributes = True
+    @field_validator("network_type")
+    @classmethod
+    def normalize_network_type(cls, value: str | None) -> str | None:
+        """Cắt khoảng trắng network_type nếu client gửi chuỗi."""
+        if value is None:
+            return None
+        stripped = value.strip()
+        return stripped or None
 
-# Anomaly Alert Schemas
-class AnomalyAlertBase(BaseModel):
-    device_id: str
-    anomaly_type: str
+
+class TelemetryOut(TelemetryIn):
+    """Telemetry sau khi backend đã ghi nhận."""
+
+    received_at: str
+
+
+class AnomalyModelOutput(BaseModel):
+    """Phần output mô hình của anomaly detector."""
+
+    is_anomaly: bool
+    anomaly_score: float
+    model_version: str = "rule_iforest_v1"
+
+
+class AnomalyEvent(BaseModel):
+    """Phần event giải thích quyết định anomaly."""
+
+    event_type: str
     severity: str
-    description: str
+    decision: str
+    explanation: str
+    recommendation: str
+    safety_note: str = "AI chỉ cảnh báo, không tự động điều khiển thiết bị."
 
-class AnomalyAlertCreate(AnomalyAlertBase):
-    timestamp: Optional[datetime] = None
 
-class AnomalyAlertResponse(AnomalyAlertBase):
-    id: int
-    timestamp: datetime
-    resolved: bool
+class AnomalyResult(BaseModel):
+    """Kết quả phát hiện dị thường theo contract Lab."""
 
-    class Config:
-        from_attributes = True
+    model_output: AnomalyModelOutput
+    event: AnomalyEvent
 
-# Recommendation Schemas
-class RecommendationBase(BaseModel):
+
+class ForecastRequest(BaseModel):
+    """Payload tùy chọn cho endpoint forecast."""
+
+    device_id: str | None = None
+
+
+class ForecastResult(BaseModel):
+    """Kết quả dự báo pin từ lịch sử telemetry."""
+
     device_id: str
-    title: str
-    content: str
-    category: str
+    current_battery_level: float | None
+    estimated_minutes_remaining: float | None
+    trend_percent_per_hour: float | None
+    message: str
 
-class RecommendationResponse(RecommendationBase):
-    id: int
-    timestamp: datetime
 
-    class Config:
-        from_attributes = True
+class RiskResult(BaseModel):
+    """Kết quả dự đoán rủi ro và khuyến nghị vận hành."""
 
-# Dashboard Stats Response Schema
-class DashboardStats(BaseModel):
     device_id: str
-    device_info: Optional[DeviceResponse] = None
-    latest_telemetry: Optional[TelemetryResponse] = None
-    time_to_empty_or_full: Optional[str] = "N/A"
-    anomaly_score: float = 0.0
-    health_status: str = "Good"  # Good, Warning, Critical
-    recent_alerts: List[AnomalyAlertResponse] = []
-    recent_recommendations: List[RecommendationResponse] = []
+    risk_level: str
+    risk_score: float
+    recommendations: list[str]
+
+
+class ModelInfo(BaseModel):
+    """Thông tin mô hình inference rule-based hiện tại."""
+
+    name: str
+    version: str
+    type: str
+    storage: str
+    telemetry_file: str
+    anomaly_file: str
+    forecast_file: str
+    telemetry_fields: list[str]
+
+
+def parse_iso_datetime(value: str) -> datetime:
+    """Chuyển ISO string sang datetime, dùng chung cho storage và forecast."""
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def none_to_empty(value: Any) -> Any:
+    """Chuyển None sang chuỗi rỗng khi ghi CSV để tránh chữ 'None' trong log."""
+    return "" if value is None else value

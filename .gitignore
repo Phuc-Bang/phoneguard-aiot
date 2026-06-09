@@ -5,6 +5,7 @@
 backend/phoneguard.db
 phoneguard.db
 backend/data/
+outputs/
 
 # Virtual Environments
 .venv/
@@ -22,6 +23,11 @@ ENV/
 .coverage
 .cache/
 
+# Frontend build/cache
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
 # OS-specific files
 .DS_Store
 Thumbs.db
@@ -33,3 +39,6 @@ Thumbs.db
 # Local Agent Guidelines & Skills
 .docs/
 skills/
+
+# Temporary scratch files
+scratch/

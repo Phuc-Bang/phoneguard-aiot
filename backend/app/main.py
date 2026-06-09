@@ -1,297 +1,119 @@
-import os
-import json
-from datetime import datetime, timezone
-from typing import List, Dict
-from fastapi import FastAPI, Depends, WebSocket, WebSocketDisconnect, HTTPException, Request
+"""FastAPI backend cho PhoneGuard AIoT."""
+
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from sqlalchemy.orm import Session
 
-from .database import engine, Base, get_db
-from . import models, schemas, crud
-from .ai.anomaly_detector import detector
-from .ai.battery_predictor import BatteryPredictor
-from .ai.recommender import Recommender
-
-# Initialize database tables
-Base.metadata.create_all(bind=engine)
-
-app = FastAPI(
-    title="PhoneGuard AIoT API",
-    description="Backend API for smartphone monitoring, anomaly detection, and predictive analytics",
-    version="1.0.0"
+from .anomaly import detect_anomaly
+from .forecasting import forecast_battery
+from .risk import predict_risk
+from .schemas import AnomalyResult, ForecastRequest, ForecastResult, ModelInfo, RiskResult, TelemetryIn, TelemetryOut
+from .storage import (
+    ANOMALY_FILE,
+    FORECAST_FILE,
+    TELEMETRY_FILE,
+    append_telemetry,
+    get_latest,
+    read_events,
+    read_telemetry,
 )
 
-# CORS Configuration
+
+app = FastAPI(
+    title="PhoneGuard AIoT Backend",
+    description="FastAPI backend nhận telemetry Android, lưu CSV và chạy inference baseline.",
+    version="1.0.0",
+)
+
+# Cho phép phone-web và React/Vite dashboard gọi API trong môi trường local/Docker.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=False,
 )
 
-# WebSocket Connection Manager
-class ConnectionManager:
-    def __init__(self):
-        self.active_connections: List[WebSocket] = []
 
-    async def connect(self, websocket: WebSocket):
-        await websocket.accept()
-        self.active_connections.append(websocket)
+@app.get("/health")
+def health() -> dict[str, str]:
+    """Healthcheck đơn giản cho local run và Docker healthcheck."""
+    print("[DEBUG] Health check")
+    return {"status": "ok", "service": "phoneguard-aiot-backend"}
 
-    def disconnect(self, websocket: WebSocket):
-        if websocket in self.active_connections:
-            self.active_connections.remove(websocket)
 
-    async def broadcast(self, message: dict):
-        for connection in self.active_connections:
-            try:
-                await connection.send_json(message)
-            except Exception:
-                # Connection might be closed already, manager will handle cleanup on disconnect
-                pass
+@app.get("/model-info", response_model=ModelInfo)
+def model_info() -> ModelInfo:
+    """Trả thông tin baseline model và đường dẫn file log."""
+    return ModelInfo(
+        name="PhoneGuard rule-based inference baseline",
+        version="1.0.0",
+        type="rule-based",
+        storage="csv",
+        telemetry_file=str(TELEMETRY_FILE),
+        anomaly_file=str(ANOMALY_FILE),
+        forecast_file=str(FORECAST_FILE),
+        telemetry_fields=[
+            "device_id",
+            "timestamp",
+            "battery_level",
+            "charging",
+            "acc_x",
+            "acc_y",
+            "acc_z",
+            "light_lux",
+            "network_type",
+        ],
+    )
 
-manager = ConnectionManager()
 
-# Helper: Get standard dashboard stats for a device
-def get_device_dashboard_stats(db: Session, device_id: str) -> dict:
-    device = crud.get_device_by_id(db, device_id)
-    if not device:
-        return {}
-    
-    logs = crud.get_telemetry_logs(db, device_id, limit=1)
-    latest_telemetry = logs[0] if logs else None
-    
-    recent_alerts = crud.get_anomaly_alerts(db, device_id, limit=10)
-    recent_recs = crud.get_recommendations(db, device_id, limit=5)
-    
-    # AI Predictions
-    time_prediction = "N/A"
-    health_status = "Good"
-    anomaly_score = 0.0
-    
-    if latest_telemetry:
-        time_prediction = BatteryPredictor.predict_remaining_time(
-            db, device_id, latest_telemetry.battery_level, latest_telemetry.battery_status
-        )
-        
-        # Calculate simple anomaly score (percentage of unresolved alerts)
-        unresolved_alerts = [a for a in recent_alerts if not a.resolved]
-        if unresolved_alerts:
-            critical_count = sum(1 for a in unresolved_alerts if a.severity == "CRITICAL")
-            warning_count = sum(1 for a in unresolved_alerts if a.severity == "WARNING")
-            
-            if critical_count > 0:
-                health_status = "Critical"
-                anomaly_score = min(0.9 + 0.1 * critical_count, 1.0)
-            elif warning_count > 0:
-                health_status = "Warning"
-                anomaly_score = min(0.4 + 0.1 * warning_count, 0.8)
-        else:
-            health_status = "Good"
-            anomaly_score = 0.0
-
-    return {
-        "device_id": device_id,
-        "device_info": schemas.DeviceResponse.model_validate(device) if device else None,
-        "latest_telemetry": schemas.TelemetryResponse.model_validate(latest_telemetry) if latest_telemetry else None,
-        "time_to_empty_or_full": time_prediction,
-        "anomaly_score": anomaly_score,
-        "health_status": health_status,
-        "recent_alerts": [schemas.AnomalyAlertResponse.model_validate(a) for a in recent_alerts],
-        "recent_recommendations": [schemas.RecommendationResponse.model_validate(r) for r in recent_recs]
-    }
-
-# API Endpoints
-@app.post("/api/v1/devices", response_model=schemas.DeviceResponse)
-def create_device(device: schemas.DeviceCreate, db: Session = Depends(get_db)):
-    db_device = crud.get_device_by_id(db, device.device_id)
-    if db_device:
-        # Update device if already exists
-        db_device.name = device.name
-        db_device.model = device.model
-        db_device.battery_capacity = device.battery_capacity
-        db.commit()
-        db.refresh(db_device)
-        return db_device
-    return crud.create_device(db, device)
-
-@app.get("/api/v1/devices", response_model=List[schemas.DeviceResponse])
-def list_devices(db: Session = Depends(get_db)):
-    return db.query(models.Device).all()
-
-@app.post("/api/v1/telemetry", response_model=schemas.TelemetryResponse)
-async def log_telemetry(telemetry: schemas.TelemetryCreate, db: Session = Depends(get_db)):
-    # Verify device exists, auto-create if not
-    db_device = crud.get_device_by_id(db, telemetry.device_id)
-    if not db_device:
-        crud.create_device(db, schemas.DeviceCreate(device_id=telemetry.device_id, name="Auto Registered Phone"))
-    
-    # Save log
-    db_log = crud.create_telemetry_log(db, telemetry)
-    
-    # Run AI Anomaly Detection
-    detector.process_telemetry(db, telemetry)
-    
-    # Run Operational Recommendations
-    Recommender.generate_recommendations(db, telemetry)
-    
-    # Broadcast updated stats to WebSockets
-    stats = get_device_dashboard_stats(db, telemetry.device_id)
-    await manager.broadcast(stats)
-    
-    return db_log
-
-# Endpoint dedicated to the "Sensor Logger" Android App format
-@app.post("/api/v1/telemetry/sensor-logger")
-async def log_telemetry_sensor_logger(request: Request, db: Session = Depends(get_db)):
+@app.post("/telemetry", response_model=TelemetryOut)
+def telemetry(payload: TelemetryIn) -> TelemetryOut:
+    """Nhận telemetry, lưu CSV và tự động ghi anomaly event nếu phát hiện bất thường."""
     try:
-        data = await request.json()
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+        print(f"[DEBUG] Nhan telemetry device={payload.device_id} pin={payload.battery_level}%")
+        saved = append_telemetry(payload)
+        detect_anomaly(payload)
+        return TelemetryOut(**saved)
+    except Exception as exc:
+        print(f"[DEBUG] Loi xu ly telemetry: {exc}")
+        raise HTTPException(status_code=500, detail="Không thể lưu telemetry") from exc
 
-    device_id = data.get("deviceId", "sensor_logger_device")
-    payload_list = data.get("payload", [])
-    
-    # Check/register device
-    db_device = crud.get_device_by_id(db, device_id)
-    if not db_device:
-        crud.create_device(
-            db, 
-            schemas.DeviceCreate(
-                device_id=device_id, 
-                name="Redmi Note 12 Turbo", 
-                model="Redmi Note 12 Turbo"
-            )
-        )
-        
-    # Map Sensor Logger arrays into variables
-    # We will look for accelerometer, battery and network state
-    battery_level = 50.0
-    battery_temp = 30.0
-    battery_status = "discharging"
-    battery_voltage = 3.8
-    
-    accel_x, accel_y, accel_z = 0.0, 0.0, 9.81
-    network_type = "Unknown"
-    network_strength = -50.0
-    
-    timestamp = datetime.now(timezone.utc)
-    
-    has_battery = False
-    has_accel = False
-    
-    for item in payload_list:
-        name = item.get("name")
-        time_ns = item.get("time", 0)
-        # Convert nanoseconds to float timestamp and datetime
-        if time_ns > 0:
-            timestamp = datetime.fromtimestamp(time_ns / 1e9, tz=timezone.utc)
-            
-        values = item.get("values", {})
-        
-        if name == "battery":
-            has_battery = True
-            # Sensor Logger fields under values: level (%), temp (C), status, voltage (V)
-            battery_level = float(values.get("level", battery_level))
-            battery_temp = float(values.get("temperature", values.get("temp", battery_temp)))
-            battery_status = str(values.get("status", battery_status)).lower()
-            battery_voltage = float(values.get("voltage", battery_voltage))
-            
-        elif name == "accelerometer":
-            has_accel = True
-            accel_x = float(values.get("x", accel_x))
-            accel_y = float(values.get("y", accel_y))
-            accel_z = float(values.get("z", accel_z))
-            
-        elif name == "network":
-            # If network stats are present
-            network_type = str(values.get("type", network_type))
-            network_strength = float(values.get("strength", network_strength))
 
-    # Standardize Sensor Logger status names to: charging, discharging, full, not_charging
-    if "charging" in battery_status:
-        battery_status = "charging"
-    elif "discharging" in battery_status:
-        battery_status = "discharging"
-    elif "full" in battery_status:
-        battery_status = "full"
-    else:
-        battery_status = "not_charging"
+@app.get("/latest")
+def latest(device_id: str | None = Query(default=None)) -> dict:
+    """Lấy telemetry mới nhất, có thể lọc theo device_id."""
+    row = get_latest(device_id=device_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Chưa có telemetry")
+    return row
 
-    # Only save if we got battery or acceleration data
-    if has_battery or has_accel:
-        telemetry_in = schemas.TelemetryCreate(
-            device_id=device_id,
-            timestamp=timestamp,
-            battery_level=battery_level,
-            battery_temperature=battery_temp,
-            battery_status=battery_status,
-            battery_voltage=battery_voltage,
-            network_type=network_type,
-            network_strength=network_strength,
-            accel_x=accel_x,
-            accel_y=accel_y,
-            accel_z=accel_z
-        )
-        
-        db_log = crud.create_telemetry_log(db, telemetry_in)
-        
-        # Run AI Anomaly Detection
-        detector.process_telemetry(db, telemetry_in)
-        
-        # Run Operational Recommendations
-        Recommender.generate_recommendations(db, telemetry_in)
-        
-        # Broadcast updated stats
-        stats = get_device_dashboard_stats(db, device_id)
-        await manager.broadcast(stats)
-        
-        return {"status": "success", "id": db_log.id}
-        
-    return {"status": "skipped", "reason": "No accelerometer or battery data in payload"}
 
-@app.get("/api/v1/dashboard/{device_id}", response_model=schemas.DashboardStats)
-def get_dashboard(device_id: str, db: Session = Depends(get_db)):
-    stats = get_device_dashboard_stats(db, device_id)
-    if not stats:
-        raise HTTPException(status_code=404, detail="Device not found or no telemetry data yet")
-    return stats
+@app.get("/history")
+def history(limit: int = Query(default=100, ge=1, le=5000), device_id: str | None = Query(default=None)) -> list[dict]:
+    """Lấy lịch sử telemetry từ outputs/phone_telemetry.csv."""
+    return read_telemetry(limit=limit, device_id=device_id)
 
-# WebSocket endpoint for real-time dashboard connection
-@app.websocket("/ws/live")
-async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)):
-    await manager.connect(websocket)
-    try:
-        # Immediately send latest state of all devices to new connection
-        devices = db.query(models.Device).all()
-        for dev in devices:
-            stats = get_device_dashboard_stats(db, dev.device_id)
-            if stats:
-                await websocket.send_json(stats)
-                
-        # Loop to keep connection open and listen for client requests
-        while True:
-            data = await websocket.receive_text()
-            # If client requests updates for specific device
-            try:
-                msg = json.loads(data)
-                if msg.get("action") == "ping":
-                    await websocket.send_json({"type": "pong"})
-                elif msg.get("action") == "get_device" and "device_id" in msg:
-                    stats = get_device_dashboard_stats(db, msg["device_id"])
-                    await websocket.send_json(stats)
-            except Exception:
-                pass
-    except WebSocketDisconnect:
-        manager.disconnect(websocket)
-    except Exception:
-        manager.disconnect(websocket)
 
-# Serve Frontend static files
-FRONTEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../frontend"))
-if os.path.exists(FRONTEND_DIR):
-    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
-else:
-    print(f"Warning: Frontend directory '{FRONTEND_DIR}' not found. Cannot serve frontend files.")
+@app.post("/detect-anomaly", response_model=AnomalyResult)
+def detect_anomaly_endpoint(payload: TelemetryIn) -> AnomalyResult:
+    """Chạy anomaly detection cho một telemetry sample."""
+    return detect_anomaly(payload)
+
+
+@app.post("/forecast", response_model=ForecastResult)
+def forecast(payload: ForecastRequest | None = None, device_id: str | None = Query(default=None)) -> ForecastResult:
+    """Dự báo pin từ lịch sử CSV và ghi forecast_log.csv."""
+    selected_device = device_id or (payload.device_id if payload else None)
+    return forecast_battery(device_id=selected_device)
+
+
+@app.post("/predict-risk", response_model=RiskResult)
+def predict_risk_endpoint(payload: TelemetryIn) -> RiskResult:
+    """Sinh mức rủi ro và khuyến nghị từ telemetry."""
+    return predict_risk(payload)
+
+
+@app.get("/events")
+def events(limit: int = Query(default=100, ge=1, le=1000), device_id: str | None = Query(default=None)) -> list[dict]:
+    """Đọc anomaly events từ outputs/anomaly_event_log.csv."""
+    return read_events(limit=limit, device_id=device_id)
