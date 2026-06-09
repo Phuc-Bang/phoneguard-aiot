@@ -1,4 +1,4 @@
-"""Dashboard Streamlit đọc telemetry.csv và anomaly_event_log.csv."""
+"""Dashboard Streamlit đọc phone_telemetry.csv và anomaly_event_log.csv."""
 
 import os
 from pathlib import Path
@@ -8,8 +8,8 @@ import streamlit as st
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
-DATA_DIR = Path(os.getenv("PHONEGUARD_DATA_DIR", ROOT_DIR / "backend" / "data"))
-TELEMETRY_FILE = DATA_DIR / "telemetry.csv"
+DATA_DIR = Path(os.getenv("PHONEGUARD_OUTPUT_DIR", ROOT_DIR / "outputs"))
+TELEMETRY_FILE = DATA_DIR / "phone_telemetry.csv"
 EVENT_FILE = DATA_DIR / "anomaly_event_log.csv"
 
 st.set_page_config(page_title="PhoneGuard AIoT Dashboard", layout="wide")
